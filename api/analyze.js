@@ -284,6 +284,11 @@ async function callAnthropic({ apiKey, title, date, participants, transcript }) 
   return toolUse.input
 }
 
+function inferSpeakerCountFromTalkTime(talkTimeBalance) {
+  const match = typeof talkTimeBalance === 'string' ? talkTimeBalance.match(/(\d+)\s*speakers?/i) : null
+  return match ? Number(match[1]) : null
+}
+
 function deriveMeta({ participants, transcript, analysis }) {
   const wordCount = (transcript || '').split(/\s+/).filter(Boolean).length
   const rawMinutes = Math.round(wordCount / 130) * 5
@@ -294,7 +299,16 @@ function deriveMeta({ participants, transcript, analysis }) {
       .map((item) => item.owner)
       .filter((owner) => owner && owner !== 'Unassigned'),
   )
-  const detectedParticipants = participants ?? Math.max(speakerNames.size, 1)
+
+  // The action-item owner set only captures people who got assigned a task,
+  // which undercounts whenever someone spoke but wasn't assigned anything.
+  // overview.talkTimeBalance is written by the model from the full
+  // transcript, so when it names a speaker count, that's a more complete
+  // signal — use whichever source implies more participants.
+  const talkTimeSpeakerCount = inferSpeakerCountFromTalkTime(analysis.overview?.talkTimeBalance)
+  const impliedParticipants = Math.max(speakerNames.size, talkTimeSpeakerCount ?? 0, 1)
+  const detectedParticipants = participants ?? impliedParticipants
+
   const attendees = [...speakerNames].slice(0, 3).map((name) => name.slice(0, 2).toUpperCase())
 
   return { durationMinutes, detectedParticipants, attendees }
