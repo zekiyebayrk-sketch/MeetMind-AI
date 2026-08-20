@@ -10,7 +10,7 @@ function AvatarGroup({ initials = [], total, size = 28 }) {
       ))}
       {overflow > 0 && (
         <div
-          className="flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-medium text-slate-500 ring-2 ring-white"
+          className="flex shrink-0 items-center justify-center rounded-full bg-tag-neutral-bg font-medium text-text-secondary ring-2 ring-surface"
           style={{ width: size, height: size, fontSize: size * 0.38 }}
         >
           +{overflow}

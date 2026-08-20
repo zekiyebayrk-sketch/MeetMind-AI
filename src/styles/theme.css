@@ -1,0 +1,179 @@
+/* Design tokens — light values live in @theme, dark overrides in .dark{}.
+   Same variable names in both, so components never need a `dark:` prefix
+   for color — only the token's value changes. */
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol";
+
+  /* Accent — refined system blue */
+  --color-accent: #0a84ff;
+  --color-accent-hover: #338fff;
+  --color-accent-active: #0968cc;
+  --color-accent-subtle-bg: oklch(94% 0.03 255);
+  --color-accent-subtle-text: #0a6fd1;
+
+  /* Structural surfaces */
+  --color-canvas: var(--color-slate-50);
+  --color-surface: var(--color-white);
+  --color-surface-secondary: var(--color-slate-50);
+  /* Material hierarchy: the sidebar (--color-sidebar-glass) carries the
+     product's one clearly-translucent, clearly-blurred liquid-glass moment.
+     --color-material-medium/-soft are deliberately much quieter — mostly
+     opaque, meant to be felt as a slight softness/depth rather than seen as
+     "glass". Same shadow/border restraint logic applies to both. */
+  --color-sidebar-glass: oklch(99% 0.006 255 / 78%);
+  --color-material-medium: oklch(99.5% 0.003 255 / 96%);
+  --color-material-soft: oklch(100% 0.002 255 / 98%);
+  --color-glass-highlight: oklch(100% 0 0 / 55%);
+  --color-glass-shadow: oklch(0% 0 0 / 8%);
+  --color-border: var(--color-slate-200);
+
+  /* Text */
+  --color-text-primary: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-500);
+  --color-text-tertiary: var(--color-slate-400);
+
+  /* Status */
+  --color-success-subtle-bg: var(--color-emerald-50);
+  --color-success-subtle-text: var(--color-emerald-600);
+  --color-warning-subtle-bg: var(--color-amber-50);
+  --color-warning-subtle-text: var(--color-amber-600);
+  --color-danger: var(--color-rose-600);
+  --color-danger-subtle-bg: var(--color-rose-50);
+  --color-danger-subtle-text: var(--color-rose-600);
+
+  /* Category tags — one bg/text pair per meeting category hue */
+  --color-tag-blue-bg: var(--color-blue-50);
+  --color-tag-blue-text: var(--color-blue-600);
+  --color-tag-violet-bg: var(--color-violet-50);
+  --color-tag-violet-text: var(--color-violet-600);
+  --color-tag-amber-bg: var(--color-amber-50);
+  --color-tag-amber-text: var(--color-amber-600);
+  --color-tag-teal-bg: var(--color-teal-50);
+  --color-tag-teal-text: var(--color-teal-600);
+  --color-tag-emerald-bg: var(--color-emerald-50);
+  --color-tag-emerald-text: var(--color-emerald-600);
+  --color-tag-rose-bg: var(--color-rose-50);
+  --color-tag-rose-text: var(--color-rose-600);
+  --color-tag-orange-bg: var(--color-orange-50);
+  --color-tag-orange-text: var(--color-orange-600);
+  --color-tag-indigo-bg: var(--color-indigo-50);
+  --color-tag-indigo-text: var(--color-indigo-600);
+  --color-tag-pink-bg: var(--color-pink-50);
+  --color-tag-pink-text: var(--color-pink-600);
+  --color-tag-neutral-bg: var(--color-slate-100);
+  --color-tag-neutral-text: var(--color-slate-600);
+
+  /* Avatar accent rotation — deeper pairing than tags, for small circular badges */
+  --color-avatar-blue-bg: var(--color-blue-100);
+  --color-avatar-blue-text: var(--color-blue-700);
+  --color-avatar-violet-bg: var(--color-violet-100);
+  --color-avatar-violet-text: var(--color-violet-700);
+  --color-avatar-amber-bg: var(--color-amber-100);
+  --color-avatar-amber-text: var(--color-amber-700);
+  --color-avatar-emerald-bg: var(--color-emerald-100);
+  --color-avatar-emerald-text: var(--color-emerald-700);
+  --color-avatar-rose-bg: var(--color-rose-100);
+  --color-avatar-rose-text: var(--color-rose-700);
+  --color-avatar-teal-bg: var(--color-teal-100);
+  --color-avatar-teal-text: var(--color-teal-700);
+}
+
+.dark {
+  --color-accent: #0a84ff;
+  --color-accent-hover: #3ea1ff;
+  --color-accent-active: #2789f2;
+  --color-accent-subtle-bg: oklch(38% 0.08 255 / 35%);
+  --color-accent-subtle-text: #7cbcff;
+
+  /* Neutral charcoal family — chroma is kept at a hair (0.002-0.003) so
+     nothing reads as literally achromatic-gray on real displays, with hue
+     250 biasing that whisper of tint cool rather than warm. Monotonic
+     lightness ramp so each layer is a gentle, distinguishable step:
+     canvas < sidebar < material-soft < material-medium < surface
+     < surface-secondary < border. Cards sit LIGHTER than the canvas
+     (conventional "elevated" dark-UI direction), not darker. */
+  --color-canvas: oklch(17% 0.002 250);
+  --color-surface: oklch(23% 0.002 250);
+  --color-surface-secondary: oklch(27% 0.002 250);
+  --color-sidebar-glass: oklch(19% 0.003 250 / 76%);
+  --color-material-medium: oklch(22% 0.002 250 / 90%);
+  --color-material-soft: oklch(20% 0.002 250 / 94%);
+  --color-glass-highlight: oklch(100% 0 0 / 8%);
+  --color-glass-shadow: oklch(0% 0 0 / 40%);
+  --color-border: oklch(32% 0.002 250);
+
+  --color-text-primary: var(--color-slate-50);
+  --color-text-secondary: var(--color-slate-400);
+  --color-text-tertiary: var(--color-slate-500);
+
+  --color-success-subtle-bg: oklch(40% 0.08 155 / 25%);
+  --color-success-subtle-text: var(--color-emerald-400);
+  --color-warning-subtle-bg: oklch(40% 0.08 80 / 25%);
+  --color-warning-subtle-text: var(--color-amber-400);
+  --color-danger: var(--color-rose-400);
+  --color-danger-subtle-bg: oklch(40% 0.08 20 / 25%);
+  --color-danger-subtle-text: var(--color-rose-400);
+
+  --color-tag-blue-bg: oklch(40% 0.09 255 / 25%);
+  --color-tag-blue-text: var(--color-blue-400);
+  --color-tag-violet-bg: oklch(40% 0.09 300 / 25%);
+  --color-tag-violet-text: var(--color-violet-400);
+  --color-tag-amber-bg: oklch(40% 0.09 80 / 25%);
+  --color-tag-amber-text: var(--color-amber-400);
+  --color-tag-teal-bg: oklch(40% 0.09 190 / 25%);
+  --color-tag-teal-text: var(--color-teal-400);
+  --color-tag-emerald-bg: oklch(40% 0.09 155 / 25%);
+  --color-tag-emerald-text: var(--color-emerald-400);
+  --color-tag-rose-bg: oklch(40% 0.09 20 / 25%);
+  --color-tag-rose-text: var(--color-rose-400);
+  --color-tag-orange-bg: oklch(40% 0.09 55 / 25%);
+  --color-tag-orange-text: var(--color-orange-400);
+  --color-tag-indigo-bg: oklch(40% 0.09 275 / 25%);
+  --color-tag-indigo-text: var(--color-indigo-400);
+  --color-tag-pink-bg: oklch(40% 0.09 340 / 25%);
+  --color-tag-pink-text: var(--color-pink-400);
+  --color-tag-neutral-bg: var(--color-slate-800);
+  --color-tag-neutral-text: var(--color-slate-300);
+
+  --color-avatar-blue-bg: oklch(40% 0.09 255 / 30%);
+  --color-avatar-blue-text: var(--color-blue-300);
+  --color-avatar-violet-bg: oklch(40% 0.09 300 / 30%);
+  --color-avatar-violet-text: var(--color-violet-300);
+  --color-avatar-amber-bg: oklch(40% 0.09 80 / 30%);
+  --color-avatar-amber-text: var(--color-amber-300);
+  --color-avatar-emerald-bg: oklch(40% 0.09 155 / 30%);
+  --color-avatar-emerald-text: var(--color-emerald-300);
+  --color-avatar-rose-bg: oklch(40% 0.09 20 / 30%);
+  --color-avatar-rose-text: var(--color-rose-300);
+  --color-avatar-teal-bg: oklch(40% 0.09 190 / 30%);
+  --color-avatar-teal-text: var(--color-teal-300);
+}
+
+/* Liquid-glass material: a soft inner top highlight (light catching the
+   glass edge), a faint inner base shadow (a hint of the material's own
+   thickness), and a diffuse outer shadow for depth — restrained on purpose,
+   no gradients or heavy glow. Pairs with bg-sidebar-glass + backdrop-blur
+   (+ backdrop-saturate, which is what actually lets whatever's behind the
+   panel read through with a bit more life, rather than a flat overlay). */
+.glass-panel {
+  box-shadow:
+    inset 0 1px 0 0 var(--color-glass-highlight),
+    inset 0 -1px 0 0 var(--color-glass-shadow),
+    0 12px 32px -8px var(--color-glass-shadow);
+}
+
+/* Quiet material tiers for everything that is NOT the sidebar. Deliberately
+   no inset highlight line (that's the sidebar's signature, not everyone's) —
+   just enough shadow to read as soft depth instead of a flat SaaS card. */
+.material-medium {
+  box-shadow:
+    0 1px 2px 0 var(--color-glass-shadow),
+    0 8px 24px -14px var(--color-glass-shadow);
+}
+
+.material-soft {
+  box-shadow: 0 1px 2px 0 var(--color-glass-shadow);
+}

@@ -1,14 +1,20 @@
 export const categoryStyles = {
-  Product: 'bg-blue-50 text-blue-600',
-  Design: 'bg-violet-50 text-violet-600',
-  Marketing: 'bg-amber-50 text-amber-600',
-  Engineering: 'bg-teal-50 text-teal-600',
-  'Customer Success': 'bg-emerald-50 text-emerald-600',
-  Finance: 'bg-rose-50 text-rose-600',
-  Sales: 'bg-orange-50 text-orange-600',
-  Leadership: 'bg-indigo-50 text-indigo-600',
-  People: 'bg-pink-50 text-pink-600',
-  General: 'bg-slate-100 text-slate-600',
+  Product: 'bg-tag-blue-bg text-tag-blue-text',
+  Design: 'bg-tag-violet-bg text-tag-violet-text',
+  Marketing: 'bg-tag-amber-bg text-tag-amber-text',
+  Engineering: 'bg-tag-teal-bg text-tag-teal-text',
+  'Customer Success': 'bg-tag-emerald-bg text-tag-emerald-text',
+  Finance: 'bg-tag-rose-bg text-tag-rose-text',
+  Sales: 'bg-tag-orange-bg text-tag-orange-text',
+  Leadership: 'bg-tag-indigo-bg text-tag-indigo-text',
+  People: 'bg-tag-pink-bg text-tag-pink-text',
+  General: 'bg-tag-neutral-bg text-tag-neutral-text',
+}
+
+export const sentimentTones = {
+  Positive: 'bg-success-subtle-bg text-success-subtle-text',
+  Neutral: 'bg-tag-neutral-bg text-tag-neutral-text',
+  Mixed: 'bg-warning-subtle-bg text-warning-subtle-text',
 }
 
 export const meetings = [

@@ -1,10 +1,19 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@import "./styles/theme.css";
+
 html {
   scroll-behavior: smooth;
 }
 
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+}
+
 ::selection {
-  background-color: theme(colors.blue.100);
-  color: theme(colors.blue.900);
+  background-color: var(--color-accent-subtle-bg);
+  color: var(--color-accent-active);
 }

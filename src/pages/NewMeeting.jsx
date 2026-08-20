@@ -3,8 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import Button from '../components/common/Button'
 import FormField from '../components/common/FormField'
-import { DocumentTextIcon, UploadIcon } from '../components/common/icons'
+import { inputSurfaceClasses } from '../components/common/inputStyles'
+import {
+  DocumentTextIcon,
+  UploadIcon,
+  MicrophoneIcon,
+  StopIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+} from '../components/common/icons'
 import { analyzeMeeting } from '../services/analysis'
+import { transcribeAudio } from '../services/transcription'
+import { useAudioRecorder } from '../hooks/useAudioRecorder'
 import { saveCustomMeeting } from '../utils/meetingsStore'
 import { slugify, todayIso } from '../utils/format'
 
@@ -16,6 +26,12 @@ Sam: I'll loop in the design team so they can review the prototype before testin
 Alex: Perfect. Let's also cover the Q3 roadmap priorities before we wrap up.`
 
 const inputModes = [
+  {
+    id: 'record',
+    label: 'Record Meeting',
+    description: 'Record directly from your microphone',
+    icon: MicrophoneIcon,
+  },
   {
     id: 'transcript',
     label: 'Paste Transcript',
@@ -30,22 +46,42 @@ const inputModes = [
   },
 ]
 
+const processingLabels = {
+  transcribing: 'Transcribing meeting…',
+  analyzing: 'Analyzing meeting…',
+  preparing: 'Preparing results…',
+}
+
+function formatClock(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function NewMeeting() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
+  const recorder = useAudioRecorder()
 
   const [meetingTitle, setMeetingTitle] = useState('')
   const [meetingDate, setMeetingDate] = useState('')
   const [participantCount, setParticipantCount] = useState('')
-  const [inputMode, setInputMode] = useState('transcript')
+  const [inputMode, setInputMode] = useState('record')
   const [transcript, setTranscript] = useState('')
   const [file, setFile] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analyzeError, setAnalyzeError] = useState(null)
+  const [processingStage, setProcessingStage] = useState(null)
+  const [processingError, setProcessingError] = useState(null)
 
-  const hasContent = inputMode === 'transcript' ? transcript.trim().length > 0 : Boolean(file)
-  const isAnalyzeDisabled = meetingTitle.trim().length === 0 || !hasContent || isAnalyzing
+  const hasContent =
+    inputMode === 'transcript'
+      ? transcript.trim().length > 0
+      : inputMode === 'audio'
+        ? Boolean(file)
+        : Boolean(recorder.audioBlob)
+  const isAnalyzeDisabled = meetingTitle.trim().length === 0 || !hasContent || processingStage !== null
+  const isRecording = recorder.recordingState === 'recording'
+  const isNearRecordingLimit = recorder.maxSeconds - recorder.elapsedSeconds <= 15
 
   function handleDrop(event) {
     event.preventDefault()
@@ -64,18 +100,53 @@ function NewMeeting() {
     const date = meetingDate || todayIso()
     const participantsNumber = participantCount ? Number(participantCount) : undefined
 
-    setAnalyzeError(null)
-    setIsAnalyzing(true)
+    setProcessingError(null)
 
+    let transcriptText = ''
+    let effectiveSource = inputMode
+
+    if (inputMode === 'record') {
+      if (!recorder.audioBlob) return
+      setProcessingStage('transcribing')
+      try {
+        const result = await transcribeAudio(recorder.audioBlob)
+        transcriptText = result.transcript
+      } catch (error) {
+        console.error('Transcription failed:', error)
+        setProcessingError('We could not transcribe your recording. Please try recording again.')
+        setProcessingStage(null)
+        return
+      }
+      effectiveSource = 'transcript'
+    } else if (inputMode === 'audio') {
+      if (!file) return
+      setProcessingStage('transcribing')
+      try {
+        const result = await transcribeAudio(file)
+        transcriptText = result.transcript
+      } catch (error) {
+        console.error('Transcription failed:', error)
+        setProcessingError('We could not transcribe your audio file. Please try a different file.')
+        setProcessingStage(null)
+        return
+      }
+      effectiveSource = 'transcript'
+    } else if (inputMode === 'transcript') {
+      transcriptText = transcript
+    }
+
+    setProcessingStage('analyzing')
     try {
       const { analysis, meta } = await analyzeMeeting({
         title: trimmedTitle,
         date,
         participants: participantsNumber,
-        transcript: inputMode === 'transcript' ? transcript : '',
-        source: inputMode,
+        transcript: effectiveSource === 'transcript' ? transcriptText : '',
+        source: effectiveSource,
         fileName: file?.name,
       })
+
+      setProcessingStage('preparing')
 
       const newMeeting = {
         id: `${slugify(trimmedTitle)}-${Date.now()}`,
@@ -89,14 +160,15 @@ function NewMeeting() {
         attendees: meta.attendees,
         status: 'Analyzed',
         analysis,
+        ...(effectiveSource === 'transcript' && transcriptText ? { transcript: transcriptText } : {}),
       }
 
       saveCustomMeeting(newMeeting)
       navigate(`/analysis-result/${newMeeting.id}`)
     } catch (error) {
       console.error('Meeting analysis failed:', error)
-      setAnalyzeError('Something went wrong generating the analysis. Please try again.')
-      setIsAnalyzing(false)
+      setProcessingError('Something went wrong generating the analysis. Please try again.')
+      setProcessingStage(null)
     }
   }
 
@@ -104,18 +176,18 @@ function NewMeeting() {
     <div className="flex flex-col gap-8">
       <Header
         title="New Meeting"
-        subtitle="Add a transcript or upload a recording to generate clear meeting insights."
+        subtitle="Record a meeting, paste a transcript, or upload audio to generate clear meeting insights."
       />
 
-      <section className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+      <section className="rounded-2xl border border-border/60 bg-surface p-8 shadow-sm">
         <div className="flex flex-col gap-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Meeting details</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Meeting details</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 label="Meeting title"
                 type="text"
-                placeholder="e.g. Product Strategy Sync"
+                placeholder="Enter meeting title"
                 value={meetingTitle}
                 onChange={(event) => setMeetingTitle(event.target.value)}
                 className="sm:col-span-2"
@@ -123,6 +195,7 @@ function NewMeeting() {
               <FormField
                 label="Date (optional)"
                 type="date"
+                icon={CalendarIcon}
                 value={meetingDate}
                 onChange={(event) => setMeetingDate(event.target.value)}
               />
@@ -130,72 +203,165 @@ function NewMeeting() {
                 label="Participants (optional)"
                 type="number"
                 min="0"
-                placeholder="e.g. 6"
+                placeholder="Number of participants"
                 value={participantCount}
                 onChange={(event) => setParticipantCount(event.target.value)}
               />
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-6">
-            <h2 className="text-lg font-semibold text-gray-900">Meeting content</h2>
+          <div className="border-t border-border pt-6">
+            <h2 className="text-lg font-semibold text-text-primary">Meeting content</h2>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {inputModes.map(({ id, label, description, icon: Icon }) => (
                 <button
                   key={id}
                   type="button"
                   aria-pressed={inputMode === id}
+                  disabled={isRecording && id !== 'record'}
                   onClick={() => setInputMode(id)}
-                  className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                  className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all active:scale-[0.98] ${
                     inputMode === id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                      ? 'border-accent/25 bg-accent-subtle-bg shadow-sm'
+                      : 'border-transparent bg-surface-secondary hover:bg-surface hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-secondary disabled:hover:shadow-none'
                   }`}
                 >
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                      inputMode === id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                  <Icon
+                    className={`h-5 w-5 shrink-0 ${
+                      inputMode === id ? 'text-accent' : 'text-text-secondary'
                     }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
+                  />
                   <span>
                     <span
                       className={`block text-sm font-semibold ${
-                        inputMode === id ? 'text-blue-700' : 'text-gray-900'
+                        inputMode === id ? 'text-accent-subtle-text' : 'text-text-primary'
                       }`}
                     >
                       {label}
                     </span>
-                    <span className="mt-0.5 block text-xs text-gray-500">{description}</span>
+                    <span className="mt-0.5 block text-xs text-text-secondary">{description}</span>
                   </span>
                 </button>
               ))}
             </div>
 
             <div className="mt-5">
-              {inputMode === 'transcript' ? (
+              {inputMode === 'record' && (
+                <div>
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-transparent bg-surface-secondary px-6 py-10 text-center">
+                    {recorder.recordingState === 'idle' && (
+                      <>
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-subtle-bg text-accent-subtle-text">
+                          <MicrophoneIcon className="h-6 w-6" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">Ready to record</p>
+                          <p className="mt-1 text-xs text-text-secondary">
+                            Up to {formatClock(recorder.maxSeconds)} per recording for this demo.
+                          </p>
+                        </div>
+                        <Button variant="pill" onClick={recorder.startRecording}>
+                          <MicrophoneIcon className="h-4 w-4" />
+                          Start Meeting
+                        </Button>
+                      </>
+                    )}
+
+                    {recorder.recordingState === 'requesting-permission' && (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="h-6 w-6 animate-spin rounded-full border-2 border-accent-subtle-bg border-t-accent"
+                        />
+                        <p className="text-sm font-medium text-text-primary">
+                          Requesting microphone access…
+                        </p>
+                      </>
+                    )}
+
+                    {isRecording && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span
+                            aria-hidden="true"
+                            className="h-2.5 w-2.5 animate-pulse rounded-full bg-danger"
+                          />
+                          <span className="text-sm font-semibold text-danger">Recording</span>
+                        </div>
+                        <p
+                          className={`text-3xl font-semibold tabular-nums ${
+                            isNearRecordingLimit ? 'text-danger' : 'text-text-primary'
+                          }`}
+                        >
+                          {formatClock(recorder.elapsedSeconds)}
+                        </p>
+                        {isNearRecordingLimit ? (
+                          <p className="text-xs font-medium text-danger">
+                            Recording will stop automatically soon
+                          </p>
+                        ) : (
+                          <p className="text-xs text-text-secondary">Max {formatClock(recorder.maxSeconds)}</p>
+                        )}
+                        <Button variant="secondary" onClick={recorder.stopRecording}>
+                          <StopIcon className="h-4 w-4" />
+                          Stop Meeting
+                        </Button>
+                      </>
+                    )}
+
+                    {recorder.recordingState === 'stopped' && recorder.audioBlob && (
+                      <>
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-subtle-bg text-success-subtle-text">
+                          <CheckCircleIcon className="h-6 w-6" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            Recording captured — {formatClock(recorder.elapsedSeconds)}
+                          </p>
+                          <p className="mt-1 text-xs text-text-secondary">
+                            Ready to analyze, or record again.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={recorder.reset}
+                          className="text-xs font-medium text-text-secondary hover:text-text-primary"
+                        >
+                          Record again
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {recorder.error && (
+                    <p className="mt-3 text-sm text-danger">{recorder.error.message}</p>
+                  )}
+                </div>
+              )}
+
+              {inputMode === 'transcript' && (
                 <div>
                   <textarea
                     rows={10}
                     value={transcript}
                     onChange={(event) => setTranscript(event.target.value)}
                     placeholder={TRANSCRIPT_PLACEHOLDER}
-                    className="w-full rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={`${inputSurfaceClasses({ shape: 'soft' })} resize-none`}
                   />
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">{transcript.length} characters</span>
+                    <span className="text-xs text-text-tertiary">{transcript.length} characters</span>
                     <button
                       type="button"
                       onClick={() => setTranscript('')}
-                      className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                      className="text-xs font-medium text-text-secondary hover:text-text-primary"
                     >
                       Clear
                     </button>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {inputMode === 'audio' && (
                 <div>
                   <div
                     onDragOver={(event) => {
@@ -205,24 +371,24 @@ function NewMeeting() {
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
+                    className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all ${
                       isDragging
-                        ? 'border-blue-400 bg-blue-50'
-                        : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                        ? 'border-accent bg-accent-subtle-bg'
+                        : 'border-border/60 bg-surface-secondary hover:bg-tag-neutral-bg'
                     }`}
                   >
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-subtle-bg text-accent-subtle-text">
                       <UploadIcon className="h-5 w-5" />
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-text-primary">
                         Drag and drop your audio file, or{' '}
-                        <span className="text-blue-600">browse</span>
+                        <span className="text-accent">browse</span>
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-text-secondary">
                         Supported formats: MP3, WAV, M4A
                       </p>
-                      <p className="text-xs text-gray-500">Maximum file size: 100 MB</p>
+                      <p className="text-xs text-text-secondary">Maximum file size: 100 MB</p>
                     </div>
                     <input
                       ref={fileInputRef}
@@ -233,12 +399,12 @@ function NewMeeting() {
                     />
                   </div>
                   {file && (
-                    <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-100 bg-white px-4 py-3">
-                      <span className="truncate text-sm text-gray-700">{file.name}</span>
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-border/60 bg-surface-secondary px-4 py-3">
+                      <span className="truncate text-sm text-text-primary">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => setFile(null)}
-                        className="ml-3 shrink-0 text-xs font-medium text-gray-400 hover:text-gray-600"
+                        className="ml-3 shrink-0 text-xs font-medium text-text-tertiary hover:text-text-secondary"
                       >
                         Remove
                       </button>
@@ -249,17 +415,17 @@ function NewMeeting() {
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2 border-t border-gray-100 pt-6">
-            <Button onClick={handleAnalyze} disabled={isAnalyzeDisabled}>
-              {isAnalyzing && (
+          <div className="flex flex-col items-end gap-2 border-t border-border pt-6">
+            <Button variant="pill" onClick={handleAnalyze} disabled={isAnalyzeDisabled}>
+              {processingStage && (
                 <span
                   aria-hidden="true"
                   className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
                 />
               )}
-              {isAnalyzing ? 'Analyzing…' : 'Analyze Meeting'}
+              {processingStage ? processingLabels[processingStage] : 'Analyze Meeting'}
             </Button>
-            {analyzeError && <p className="text-sm text-rose-600">{analyzeError}</p>}
+            {processingError && <p className="text-sm text-danger">{processingError}</p>}
           </div>
         </div>
       </section>

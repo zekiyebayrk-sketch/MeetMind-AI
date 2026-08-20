@@ -1,7 +1,9 @@
 const tones = {
-  neutral: 'bg-slate-100 text-slate-600',
-  success: 'bg-emerald-50 text-emerald-600',
-  brand: 'bg-blue-50 text-blue-600',
+  neutral: 'bg-tag-neutral-bg text-tag-neutral-text',
+  success: 'bg-success-subtle-bg text-success-subtle-text',
+  brand: 'bg-accent-subtle-bg text-accent-subtle-text',
+  warning: 'bg-warning-subtle-bg text-warning-subtle-text',
+  danger: 'bg-danger-subtle-bg text-danger-subtle-text',
 }
 
 function StatusPill({ children, tone = 'neutral', className = '' }) {
